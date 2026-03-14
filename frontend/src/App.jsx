@@ -143,6 +143,16 @@ function App() {
           </p>
         </div>
       )}
+      {/* center selection indicator */}
+      <div style={{
+        position: 'fixed', top: '50%', left: 0, right: 0, zIndex: 10,
+        transform: 'translateY(-50%)',
+        height: 'calc(clamp(1rem, 5.5vw, 2.5rem) * 1.2 + 2rem)',
+        borderTop: `2px solid ${fg}`,
+        borderBottom: `2px solid ${fg}`,
+        pointerEvents: 'none',
+        transition: 'border-color 0.3s',
+      }} />
       <div
         ref={containerRef}
         style={{
