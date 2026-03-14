@@ -1,7 +1,11 @@
+const sentences = Array.from({ length: 50 }, (_, i) => `Hello World ${i + 1}`)
+
 function App() {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}>
-      <h1>Hello World</h1>
+    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+      {sentences.map((s, i) => (
+        <p key={i}>{s}</p>
+      ))}
     </div>
   )
 }
