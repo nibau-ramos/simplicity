@@ -59,6 +59,10 @@ function App() {
     setIndicatorH(iH)
     setCloneTopOffset(-(viewportH / 2 - iH / 2))
 
+    // centre item 0 in the indicator on load
+    posRef.current = (((item0CenterRef.current - viewportH / 2) % singleHeightRef.current) + singleHeightRef.current) % singleHeightRef.current
+    applyPos()
+
     const applyPos = () => {
       const H = singleHeightRef.current
       posRef.current = ((posRef.current % H) + H) % H
@@ -130,19 +134,24 @@ function App() {
       applyPos()
     }
 
-    const onTouchEnd = () => {
-      const vel = velRef.current
-      if (Math.abs(vel) >= 0.5) {
-        // normal flick — target nearest item to natural landing
-        // spring coeff = 1-FRICTION matches momentum exactly: vel=dist*(1-f) ≡ v0 when dist=v0/(1-f)
-        const targetN = Math.round(toPhase(posRef.current + vel / (1 - FRICTION)))
-        runSpring(nToPos(targetN), 1 - FRICTION)
-      } else {
-        // barely moved — settle quickly to nearest item
-        const targetN = Math.round(toPhase(posRef.current))
-        runSpring(nToPos(targetN), 0.12)
-      }
+    const settleToItem = (vel) => {
+      const H = singleHeightRef.current
+      const naturalLanding = posRef.current + vel / (1 - FRICTION)
+      let targetN = Math.round(toPhase(naturalLanding))
+      let target = nToPos(targetN)
+
+      // if the spring would go against the scroll direction, step one item forward/backward
+      let dist = target - posRef.current
+      if (dist >  H / 2) dist -= H
+      if (dist < -H / 2) dist += H
+      if (vel >  0.1 && dist < -1) target = nToPos(++targetN)
+      if (vel < -0.1 && dist >  1) target = nToPos(--targetN)
+
+      const coeff = Math.abs(vel) < 0.5 ? 0.12 : 1 - FRICTION
+      runSpring(target, coeff)
     }
+
+    const onTouchEnd = () => settleToItem(velRef.current)
 
     let wheelTimer = null
     const onWheel = (e) => {
@@ -152,10 +161,7 @@ function App() {
       const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY
       posRef.current += delta
       applyPos()
-      wheelTimer = setTimeout(() => {
-        const targetN = Math.round(toPhase(posRef.current))
-        runSpring(nToPos(targetN), 0.12)
-      }, 80)
+      wheelTimer = setTimeout(() => settleToItem(0), 80)
     }
 
     const onResize = () => setVh(window.innerHeight)
