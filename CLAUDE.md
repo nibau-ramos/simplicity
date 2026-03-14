@@ -45,6 +45,7 @@ React (Vite) SPA built inside Docker and served statically by Nginx.
   understand the requirements, edge cases, and expected outcome
 - If a request is ambiguous, always ask rather than assume
 - Confirm your understanding of the task before writing any code
+- on this software for now we never use icons or images
 
 ## Communication
 - Be concise in explanations unless asked for detail

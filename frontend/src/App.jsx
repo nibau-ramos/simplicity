@@ -40,6 +40,7 @@ function App() {
   const singleHeightRef = useRef(0)
   const itemHRef = useRef(0)
   const item0CenterRef = useRef(0)
+  const itemCentersRef = useRef([])
 
   // measured after mount — used to position the indicator and clone
   const [indicatorH, setIndicatorH] = useState(0)
@@ -48,26 +49,51 @@ function App() {
   useEffect(() => {
     const container = containerRef.current
     const content = contentRef.current
-    singleHeightRef.current = content.scrollHeight / 2
-
     const items = content.querySelectorAll('p')
     itemHRef.current = items[1].offsetTop - items[0].offsetTop
+    singleHeightRef.current = items[sentences.length].offsetTop - items[0].offsetTop
     item0CenterRef.current = items[0].offsetTop + items[0].offsetHeight / 2
+    itemCentersRef.current = Array.from(items).slice(0, sentences.length).map(el => el.offsetTop + el.offsetHeight / 2)
 
     const iH = itemHRef.current
     const viewportH = container.clientHeight
     setIndicatorH(iH)
     setCloneTopOffset(-(viewportH / 2 - iH / 2))
 
+    const FRICTION = 0.97
+
+    const posToItemN = (p) => {
+      const centers = itemCentersRef.current
+      const H = singleHeightRef.current
+      const viewH = container.clientHeight
+      const visibleCenter = p + viewH / 2
+      let best = 0
+      let bestDist = Infinity
+      for (let i = 0; i < centers.length; i++) {
+        let d = visibleCenter - centers[i]
+        d = ((d % H) + H) % H
+        if (d > H / 2) d -= H
+        if (Math.abs(d) < bestDist) { bestDist = Math.abs(d); best = i }
+      }
+      return best
+    }
+
+    const nToPos = (n) => {
+      const H = singleHeightRef.current
+      const centers = itemCentersRef.current
+      const idx = ((n % centers.length) + centers.length) % centers.length
+      const raw = centers[idx] - container.clientHeight / 2
+      return ((raw % H) + H) % H
+    }
+
     const applyPos = () => {
       const H = singleHeightRef.current
-      posRef.current = ((posRef.current % H) + H) % H
-      const t = `translateY(${-posRef.current}px)`
+      const pos = ((posRef.current % H) + H) % H  // normalize for display only, don't write back
+      const t = `translateY(${-pos}px)`
       content.style.transform = t
       if (cloneRef.current) cloneRef.current.style.transform = t
 
-      const itemH = H / sentences.length
-      const item = Math.floor(posRef.current / itemH) % sentences.length
+      const item = posToItemN(pos)
       if (item !== lastItemRef.current) {
         lastItemRef.current = item
         const now = performance.now()
@@ -81,18 +107,8 @@ function App() {
     }
 
     // centre item 0 in the indicator on load
-    posRef.current = (((item0CenterRef.current - viewportH / 2) % singleHeightRef.current) + singleHeightRef.current) % singleHeightRef.current
+    posRef.current = nToPos(0)
     applyPos()
-
-    const FRICTION = 0.97
-
-    const toPhase = (p) =>
-      (p + container.clientHeight / 2 - item0CenterRef.current) / itemHRef.current
-
-    const nToPos = (n) => {
-      const H = singleHeightRef.current
-      return (((item0CenterRef.current + n * itemHRef.current - container.clientHeight / 2) % H) + H) % H
-    }
 
     const runSpring = (target, coeff) => {
       const H = singleHeightRef.current
@@ -137,7 +153,7 @@ function App() {
     const settleToItem = (vel) => {
       const H = singleHeightRef.current
       const naturalLanding = posRef.current + vel / (1 - FRICTION)
-      let targetN = Math.round(toPhase(naturalLanding))
+      let targetN = posToItemN(naturalLanding)
       let target = nToPos(targetN)
 
       // if the spring would go against the scroll direction, step one item forward/backward
@@ -181,6 +197,13 @@ function App() {
       cancelAnimationFrame(rafRef.current)
     }
   }, [])
+
+  // sync clone transform after it first mounts (indicatorH > 0 triggers its render)
+  useEffect(() => {
+    if (indicatorH > 0 && cloneRef.current) {
+      cloneRef.current.style.transform = `translateY(${-posRef.current}px)`
+    }
+  }, [indicatorH])
 
   const unlockAudio = async () => {
     const ctx = new AudioContext()
