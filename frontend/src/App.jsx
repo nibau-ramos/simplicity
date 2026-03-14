@@ -39,7 +39,6 @@ function App() {
   const singleHeightRef = useRef(0)
   const itemHRef = useRef(0)
   const item0CenterRef = useRef(0)
-  const selectedNRef = useRef(0)
 
   // measured after mount — used to position the indicator and clone
   const [indicatorH, setIndicatorH] = useState(0)
@@ -58,11 +57,6 @@ function App() {
     const viewportH = container.clientHeight
     setIndicatorH(iH)
     setCloneTopOffset(-(viewportH / 2 - iH / 2))
-
-    // initialise selectedN to whichever item is at centre on load
-    selectedNRef.current = Math.round(
-      (posRef.current + viewportH / 2 - item0CenterRef.current) / iH
-    )
 
     const applyPos = () => {
       const H = singleHeightRef.current
@@ -85,58 +79,40 @@ function App() {
       }
     }
 
-    const toPhase = (p) => {
-      const viewportH = container.clientHeight
-      return (p + viewportH / 2 - item0CenterRef.current) / itemHRef.current
-    }
+    const FRICTION = 0.97
+
+    const toPhase = (p) =>
+      (p + container.clientHeight / 2 - item0CenterRef.current) / itemHRef.current
 
     const nToPos = (n) => {
       const H = singleHeightRef.current
-      const viewportH = container.clientHeight
-      return (((item0CenterRef.current + n * itemHRef.current - viewportH / 2) % H) + H) % H
+      return (((item0CenterRef.current + n * itemHRef.current - container.clientHeight / 2) % H) + H) % H
     }
 
-    const startMomentum = () => {
+    const momentum = () => {
+      velRef.current *= FRICTION
+      posRef.current += velRef.current
+      applyPos()
+
       const vel = velRef.current
-      const H = singleHeightRef.current
-      const BASE_FRICTION = 0.97
+      const itemH = itemHRef.current
+      const currentPhase = toPhase(posRef.current)
+      const currentN = Math.round(currentPhase)
 
-      // where would momentum naturally stop?
-      const naturalStop = posRef.current + vel / (1 - BASE_FRICTION)
-      const naturalN = Math.round(toPhase(naturalStop))
+      // distance to midpoint of the next item in scroll direction
+      const nextMidPhase = vel >= 0 ? currentN + 0.5 : currentN - 0.5
+      const pixelDistToMid = (nextMidPhase - currentPhase) * itemH
+      const remaining = vel / (1 - FRICTION)
 
-      // target: advance in scroll direction only if momentum carries past midpoint;
-      // otherwise return to the currently selected item
-      let targetN
-      if (vel > 0) targetN = naturalN > selectedNRef.current ? naturalN : selectedNRef.current
-      else         targetN = naturalN < selectedNRef.current ? naturalN : selectedNRef.current
-
-      const target = nToPos(targetN)
-
-      let dist = target - posRef.current
-      if (dist >  H / 2) dist -= H
-      if (dist < -H / 2) dist += H
-
-      // adjust friction so vel/(1-f) = dist exactly
-      let f = BASE_FRICTION
-      if (Math.abs(dist) > Math.abs(vel) && Math.sign(dist) === Math.sign(vel)) {
-        f = Math.max(0.88, Math.min(0.995, 1 - vel / dist))
-      }
-
-      const run = () => {
-        velRef.current *= f
-        posRef.current += velRef.current
+      if (Math.abs(remaining) < Math.abs(pixelDistToMid)) {
+        // not enough energy to reach next midpoint — stop at current item
+        velRef.current = 0
+        posRef.current = nToPos(currentN)
         applyPos()
-        if (Math.abs(velRef.current) < 0.08) {
-          velRef.current = 0
-          posRef.current = target
-          selectedNRef.current = targetN
-          applyPos()
-          return
-        }
-        rafRef.current = requestAnimationFrame(run)
+        return
       }
-      rafRef.current = requestAnimationFrame(run)
+
+      rafRef.current = requestAnimationFrame(momentum)
     }
 
     const onTouchStart = (e) => {
@@ -160,17 +136,7 @@ function App() {
     }
 
     const onTouchEnd = () => {
-      if (Math.abs(velRef.current) < 0.5) {
-        // barely moved — go back to selected item
-        velRef.current = 0
-        const target = nToPos(selectedNRef.current)
-        let dist = target - posRef.current
-        const H = singleHeightRef.current
-        if (dist >  H / 2) dist -= H
-        if (dist < -H / 2) dist += H
-        velRef.current = dist * 0.18
-      }
-      startMomentum()
+      rafRef.current = requestAnimationFrame(momentum)
     }
 
     let wheelTimer = null
@@ -181,7 +147,9 @@ function App() {
       const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY
       posRef.current += delta
       applyPos()
-      wheelTimer = setTimeout(() => { velRef.current = 0; startMomentum() }, 80)
+      // after wheel stops, settle to nearest item using same momentum logic
+      velRef.current = delta * 0.3
+      wheelTimer = setTimeout(() => { rafRef.current = requestAnimationFrame(momentum) }, 80)
     }
 
     container.addEventListener('touchstart', onTouchStart, { passive: true })
