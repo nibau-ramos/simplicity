@@ -27,6 +27,7 @@ function App() {
   const lastTickTimeRef = useRef(0)
   const [audioReady, setAudioReady] = useState(false)
   const [dark, setDark] = useState(false)
+  const [vh, setVh] = useState(() => window.innerHeight)
   const volumeStates = ['off', 'low', 'medium', 'normal']
   const [volumeIdx, setVolumeIdx] = useState(1)
   const volumeIdxRef = useRef(1)
@@ -157,16 +158,20 @@ function App() {
       }, 80)
     }
 
+    const onResize = () => setVh(window.innerHeight)
+
     container.addEventListener('touchstart', onTouchStart, { passive: true })
     container.addEventListener('touchmove', onTouchMove, { passive: false })
     container.addEventListener('touchend', onTouchEnd)
     container.addEventListener('wheel', onWheel, { passive: false })
+    window.addEventListener('resize', onResize)
 
     return () => {
       container.removeEventListener('touchstart', onTouchStart)
       container.removeEventListener('touchmove', onTouchMove)
       container.removeEventListener('touchend', onTouchEnd)
       container.removeEventListener('wheel', onWheel)
+      window.removeEventListener('resize', onResize)
       cancelAnimationFrame(rafRef.current)
     }
   }, [])
@@ -191,7 +196,7 @@ function App() {
   }
 
   return (
-    <div style={{ position: 'relative', height: '100vh', background: bg, transition: 'background 0.3s' }}>
+    <div style={{ position: 'relative', height: vh, background: bg, transition: 'background 0.3s' }}>
       {!audioReady && (
         <div onClick={unlockAudio} style={{
           position: 'absolute', inset: 0, zIndex: 20,
@@ -208,7 +213,7 @@ function App() {
 
       <div
         ref={containerRef}
-        style={{ position: 'relative', height: '100vh', overflow: 'hidden',
+        style={{ position: 'relative', height: vh, overflow: 'hidden',
           fontFamily: "'Courier New', Courier, monospace", touchAction: 'none', userSelect: 'none' }}
       >
         {/* normal list */}
