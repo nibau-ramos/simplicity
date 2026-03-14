@@ -1,9 +1,36 @@
+import { useEffect, useRef } from 'react'
+
 const sentences = Array.from({ length: 50 }, (_, i) => `Hello World ${i + 1}`)
+const tripled = [...sentences, ...sentences, ...sentences]
 
 function App() {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    const oneThird = el.scrollHeight / 3
+    el.scrollTop = oneThird
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight } = el
+      const third = scrollHeight / 3
+      if (scrollTop >= third * 2) {
+        el.scrollTop = scrollTop - third
+      } else if (scrollTop < third) {
+        el.scrollTop = scrollTop + third
+      }
+    }
+
+    el.addEventListener('scroll', handleScroll)
+    return () => el.removeEventListener('scroll', handleScroll)
+  }, [])
+
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: '3rem 1rem' }}>
-      {sentences.map((s, i) => (
+    <div
+      ref={containerRef}
+      style={{ height: '100vh', overflowY: 'scroll', fontFamily: 'sans-serif', padding: '3rem 1rem' }}
+    >
+      {tripled.map((s, i) => (
         <p key={i} style={{
           fontSize: '2.5rem',
           fontWeight: '700',
