@@ -131,8 +131,7 @@ function App() {
           backdropFilter: 'blur(6px)',
           cursor: 'pointer', fontFamily: "'Courier New', Courier, monospace",
         }}>
-          <span style={{ fontSize: '3rem' }}>🔊</span>
-          <p style={{ fontSize: '1.1rem', fontWeight: '700', marginTop: '1rem', letterSpacing: '0.05em' }}>
+          <p style={{ fontSize: '1.1rem', fontWeight: '700', letterSpacing: '0.05em' }}>
             tap to enable sound
           </p>
         </div>
@@ -167,15 +166,15 @@ function App() {
         onClick={() => setDark(d => !d)}
         style={{
           position: 'absolute', bottom: '1.5rem', right: '1.5rem', zIndex: 20,
-          width: '2.8rem', height: '2.8rem', borderRadius: '50%',
           border: `2px solid ${fg}`,
           background: bg, color: fg,
-          fontSize: '1.1rem', cursor: 'pointer',
+          fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.05em',
+          padding: '0.4rem 0.8rem', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'background 0.3s, color 0.3s, border-color 0.3s',
         }}
       >
-        {dark ? '☀️' : '🌙'}
+        {dark ? 'light' : 'dark'}
       </button>
     </div>
   )
