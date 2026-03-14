@@ -39,6 +39,7 @@ function App() {
   const singleHeightRef = useRef(0)
   const itemHRef = useRef(0)
   const item0CenterRef = useRef(0)
+  const selectedNRef = useRef(0)
 
   // measured after mount — used to position the indicator and clone
   const [indicatorH, setIndicatorH] = useState(0)
@@ -57,6 +58,11 @@ function App() {
     const viewportH = container.clientHeight
     setIndicatorH(iH)
     setCloneTopOffset(-(viewportH / 2 - iH / 2))
+
+    // initialise selectedN to whichever item is at centre on load
+    selectedNRef.current = Math.round(
+      (posRef.current + viewportH / 2 - item0CenterRef.current) / iH
+    )
 
     const applyPos = () => {
       const H = singleHeightRef.current
@@ -79,31 +85,39 @@ function App() {
       }
     }
 
-    const nearestTarget = (fromPos) => {
-      const H = singleHeightRef.current
-      const itemH = itemHRef.current
-      const item0Center = item0CenterRef.current
+    const toPhase = (p) => {
       const viewportH = container.clientHeight
-      const contentCenter = fromPos + viewportH / 2
-      const n = Math.round((contentCenter - item0Center) / itemH)
-      return (((item0Center + n * itemH - viewportH / 2) % H) + H) % H
+      return (p + viewportH / 2 - item0CenterRef.current) / itemHRef.current
+    }
+
+    const nToPos = (n) => {
+      const H = singleHeightRef.current
+      const viewportH = container.clientHeight
+      return (((item0CenterRef.current + n * itemHRef.current - viewportH / 2) % H) + H) % H
     }
 
     const startMomentum = () => {
       const vel = velRef.current
       const H = singleHeightRef.current
-
-      // predict natural stop, find target item there
       const BASE_FRICTION = 0.97
+
+      // where would momentum naturally stop?
       const naturalStop = posRef.current + vel / (1 - BASE_FRICTION)
-      const target = nearestTarget(naturalStop)
+      const naturalN = Math.round(toPhase(naturalStop))
+
+      // target: advance in scroll direction only if momentum carries past midpoint;
+      // otherwise return to the currently selected item
+      let targetN
+      if (vel > 0) targetN = naturalN > selectedNRef.current ? naturalN : selectedNRef.current
+      else         targetN = naturalN < selectedNRef.current ? naturalN : selectedNRef.current
+
+      const target = nToPos(targetN)
 
       let dist = target - posRef.current
       if (dist >  H / 2) dist -= H
       if (dist < -H / 2) dist += H
 
-      // adjust friction so the geometric series sums exactly to dist
-      // vel/(1-f) = dist  →  f = 1 - vel/dist
+      // adjust friction so vel/(1-f) = dist exactly
       let f = BASE_FRICTION
       if (Math.abs(dist) > Math.abs(vel) && Math.sign(dist) === Math.sign(vel)) {
         f = Math.max(0.88, Math.min(0.995, 1 - vel / dist))
@@ -115,7 +129,8 @@ function App() {
         applyPos()
         if (Math.abs(velRef.current) < 0.08) {
           velRef.current = 0
-          posRef.current = target   // sub-pixel correction, visually imperceptible
+          posRef.current = target
+          selectedNRef.current = targetN
           applyPos()
           return
         }
@@ -146,9 +161,9 @@ function App() {
 
     const onTouchEnd = () => {
       if (Math.abs(velRef.current) < 0.5) {
-        // barely moved — jump directly to nearest with deceleration
+        // barely moved — go back to selected item
         velRef.current = 0
-        const target = nearestTarget(posRef.current)
+        const target = nToPos(selectedNRef.current)
         let dist = target - posRef.current
         const H = singleHeightRef.current
         if (dist >  H / 2) dist -= H
