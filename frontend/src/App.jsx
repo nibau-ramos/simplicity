@@ -79,7 +79,8 @@ function App() {
     >
       {tripled.map((s, i) => (
         <p key={i} style={{
-          fontSize: '2.5rem',
+          fontSize: 'clamp(1rem, 5.5vw, 2.5rem)',
+          whiteSpace: 'nowrap',
           fontWeight: '700',
           textAlign: 'center',
           margin: '1rem 0',
