@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-const sentences = Array.from({ length: 50 }, (_, i) => `Hello World ${i + 1}`)
+const sentences = Array.from({ length: 50 }, (_, i) => `Hello World ${String(i + 1).padStart(2, '0')}`)
 const tripled = [...sentences, ...sentences, ...sentences]
 
 function App() {
@@ -28,7 +28,7 @@ function App() {
   return (
     <div
       ref={containerRef}
-      style={{ height: '100vh', overflowY: 'scroll', fontFamily: 'sans-serif', padding: '3rem 1rem' }}
+      style={{ height: '100vh', overflowY: 'scroll', fontFamily: "'Courier New', Courier, monospace", padding: '3rem 1rem' }}
     >
       {tripled.map((s, i) => (
         <p key={i} style={{
