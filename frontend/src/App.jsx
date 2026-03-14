@@ -89,30 +89,24 @@ function App() {
       return (((item0CenterRef.current + n * itemHRef.current - container.clientHeight / 2) % H) + H) % H
     }
 
-    const momentum = () => {
-      velRef.current *= FRICTION
-      posRef.current += velRef.current
-      applyPos()
-
-      const vel = velRef.current
-      const itemH = itemHRef.current
-      const currentPhase = toPhase(posRef.current)
-      const currentN = Math.round(currentPhase)
-
-      // distance to midpoint of the next item in scroll direction
-      const nextMidPhase = vel >= 0 ? currentN + 0.5 : currentN - 0.5
-      const pixelDistToMid = (nextMidPhase - currentPhase) * itemH
-      const remaining = vel / (1 - FRICTION)
-
-      if (Math.abs(remaining) < Math.abs(pixelDistToMid)) {
-        // not enough energy to reach next midpoint — stop at current item
-        velRef.current = 0
-        posRef.current = nToPos(currentN)
+    const runSpring = (target, coeff) => {
+      const H = singleHeightRef.current
+      const step = () => {
+        let dist = target - posRef.current
+        if (dist >  H / 2) dist -= H
+        if (dist < -H / 2) dist += H
+        if (Math.abs(dist) < 0.15) {
+          posRef.current = target
+          velRef.current = 0
+          applyPos()
+          return
+        }
+        velRef.current = dist * coeff
+        posRef.current += velRef.current
         applyPos()
-        return
+        rafRef.current = requestAnimationFrame(step)
       }
-
-      rafRef.current = requestAnimationFrame(momentum)
+      rafRef.current = requestAnimationFrame(step)
     }
 
     const onTouchStart = (e) => {
@@ -136,7 +130,17 @@ function App() {
     }
 
     const onTouchEnd = () => {
-      rafRef.current = requestAnimationFrame(momentum)
+      const vel = velRef.current
+      if (Math.abs(vel) >= 0.5) {
+        // normal flick — target nearest item to natural landing
+        // spring coeff = 1-FRICTION matches momentum exactly: vel=dist*(1-f) ≡ v0 when dist=v0/(1-f)
+        const targetN = Math.round(toPhase(posRef.current + vel / (1 - FRICTION)))
+        runSpring(nToPos(targetN), 1 - FRICTION)
+      } else {
+        // barely moved — settle quickly to nearest item
+        const targetN = Math.round(toPhase(posRef.current))
+        runSpring(nToPos(targetN), 0.12)
+      }
     }
 
     let wheelTimer = null
@@ -147,9 +151,10 @@ function App() {
       const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY
       posRef.current += delta
       applyPos()
-      // after wheel stops, settle to nearest item using same momentum logic
-      velRef.current = delta * 0.3
-      wheelTimer = setTimeout(() => { rafRef.current = requestAnimationFrame(momentum) }, 80)
+      wheelTimer = setTimeout(() => {
+        const targetN = Math.round(toPhase(posRef.current))
+        runSpring(nToPos(targetN), 0.12)
+      }, 80)
     }
 
     container.addEventListener('touchstart', onTouchStart, { passive: true })
