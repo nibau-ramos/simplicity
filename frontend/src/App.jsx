@@ -169,13 +169,9 @@ function App() {
           ))}
         </div>
       </div>
-      {/* controls overlay — pointerEvents none so scroll still works everywhere except the buttons */}
       <div style={{
-        position: 'absolute', inset: 0, zIndex: 20,
-        pointerEvents: 'none',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
-        padding: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem)) max(1.5rem, env(safe-area-inset-right, 1.5rem))',
-        gap: '0.5rem',
+        position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 30,
+        display: 'flex', gap: '0.5rem',
         fontFamily: "'Courier New', Courier, monospace",
       }}>
         {[
@@ -185,13 +181,14 @@ function App() {
             setVolumeIdx(next)
             volumeIdxRef.current = next
           }},
-        ].map(({ label, onClick }) => (
-          <button key={label} onClick={onClick} style={{
-            pointerEvents: 'auto',
+          { label: 'refresh', onClick: () => window.location.reload() },
+        ].map(({ label, onClick }, i) => (
+          <button key={i} onClick={onClick} style={{
             border: `2px solid ${fg}`,
             background: bg, color: fg,
             fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.05em',
-            padding: '0.4rem 0.8rem', cursor: 'pointer',
+            padding: '0.6rem 1rem', cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
             transition: 'background 0.3s, color 0.3s, border-color 0.3s',
           }}>
             {label}
