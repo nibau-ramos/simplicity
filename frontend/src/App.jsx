@@ -25,6 +25,7 @@ function App() {
   const containerRef = useRef(null)
   const audioCtxRef = useRef(null)
   const lastItemRef = useRef(-1)
+  const lastTickTimeRef = useRef(0)
 
   useEffect(() => {
     const el = containerRef.current
@@ -46,7 +47,11 @@ function App() {
       const currentItem = Math.round(el.scrollTop / itemHeight)
       if (currentItem !== lastItemRef.current) {
         lastItemRef.current = currentItem
-        if (audioCtxRef.current) playTick(audioCtxRef.current)
+        const now = performance.now()
+        if (audioCtxRef.current && now - lastTickTimeRef.current >= 50) {
+          lastTickTimeRef.current = now
+          playTick(audioCtxRef.current)
+        }
       }
     }
 
