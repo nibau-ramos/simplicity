@@ -79,35 +79,49 @@ function App() {
       }
     }
 
-    const snapToNearest = () => {
+    const nearestTarget = (fromPos) => {
       const H = singleHeightRef.current
       const itemH = itemHRef.current
       const item0Center = item0CenterRef.current
       const viewportH = container.clientHeight
-      const contentCenterPos = posRef.current + viewportH / 2
-      const phase = (contentCenterPos - item0Center) / itemH
-      const n = Math.round(phase)
-      const targetContentPos = item0Center + n * itemH
-      let target = (((targetContentPos - viewportH / 2) % H) + H) % H
-
-      const animateSnap = () => {
-        let diff = target - posRef.current
-        if (diff >  H / 2) diff -= H
-        if (diff < -H / 2) diff += H
-        if (Math.abs(diff) < 0.3) { posRef.current = target; applyPos(); return }
-        posRef.current += diff * 0.2
-        applyPos()
-        rafRef.current = requestAnimationFrame(animateSnap)
-      }
-      rafRef.current = requestAnimationFrame(animateSnap)
+      const contentCenter = fromPos + viewportH / 2
+      const n = Math.round((contentCenter - item0Center) / itemH)
+      return (((item0Center + n * itemH - viewportH / 2) % H) + H) % H
     }
 
-    const momentum = () => {
-      velRef.current *= 0.97
-      if (Math.abs(velRef.current) < 0.5) { velRef.current = 0; snapToNearest(); return }
-      posRef.current += velRef.current
-      applyPos()
-      rafRef.current = requestAnimationFrame(momentum)
+    const startMomentum = () => {
+      const vel = velRef.current
+      const H = singleHeightRef.current
+
+      // predict natural stop, find target item there
+      const BASE_FRICTION = 0.97
+      const naturalStop = posRef.current + vel / (1 - BASE_FRICTION)
+      const target = nearestTarget(naturalStop)
+
+      let dist = target - posRef.current
+      if (dist >  H / 2) dist -= H
+      if (dist < -H / 2) dist += H
+
+      // adjust friction so the geometric series sums exactly to dist
+      // vel/(1-f) = dist  →  f = 1 - vel/dist
+      let f = BASE_FRICTION
+      if (Math.abs(dist) > Math.abs(vel) && Math.sign(dist) === Math.sign(vel)) {
+        f = Math.max(0.88, Math.min(0.995, 1 - vel / dist))
+      }
+
+      const run = () => {
+        velRef.current *= f
+        posRef.current += velRef.current
+        applyPos()
+        if (Math.abs(velRef.current) < 0.08) {
+          velRef.current = 0
+          posRef.current = target   // sub-pixel correction, visually imperceptible
+          applyPos()
+          return
+        }
+        rafRef.current = requestAnimationFrame(run)
+      }
+      rafRef.current = requestAnimationFrame(run)
     }
 
     const onTouchStart = (e) => {
@@ -130,7 +144,19 @@ function App() {
       applyPos()
     }
 
-    const onTouchEnd = () => { rafRef.current = requestAnimationFrame(momentum) }
+    const onTouchEnd = () => {
+      if (Math.abs(velRef.current) < 0.5) {
+        // barely moved — jump directly to nearest with deceleration
+        velRef.current = 0
+        const target = nearestTarget(posRef.current)
+        let dist = target - posRef.current
+        const H = singleHeightRef.current
+        if (dist >  H / 2) dist -= H
+        if (dist < -H / 2) dist += H
+        velRef.current = dist * 0.18
+      }
+      startMomentum()
+    }
 
     let wheelTimer = null
     const onWheel = (e) => {
@@ -140,7 +166,7 @@ function App() {
       const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY
       posRef.current += delta
       applyPos()
-      wheelTimer = setTimeout(snapToNearest, 80)
+      wheelTimer = setTimeout(() => { velRef.current = 0; startMomentum() }, 80)
     }
 
     container.addEventListener('touchstart', onTouchStart, { passive: true })
