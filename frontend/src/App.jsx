@@ -39,7 +39,7 @@ function App() {
   const singleHeightRef = useRef(0)
   const itemHRef = useRef(0)
   const item0CenterRef = useRef(0)
-  const lastDirRef = useRef(1)
+
 
   useEffect(() => {
     const container = containerRef.current
@@ -71,7 +71,7 @@ function App() {
       }
     }
 
-    const snapToNearest = (dir) => {
+    const snapToNearest = () => {
       const H = singleHeightRef.current
       const itemH = itemHRef.current
       const item0Center = item0CenterRef.current
@@ -81,10 +81,7 @@ function App() {
       const contentCenterPos = posRef.current + viewportH / 2
       const phase = (contentCenterPos - item0Center) / itemH
 
-      // snap in scroll direction: ceil when going down, floor when going up
-      const n = dir > 0
-        ? Math.ceil(phase - 1e-6)
-        : Math.floor(phase + 1e-6)
+      const n = Math.round(phase)
 
       const targetContentPos = item0Center + n * itemH
       let target = (((targetContentPos - viewportH / 2) % H) + H) % H
@@ -109,10 +106,9 @@ function App() {
       velRef.current *= 0.97
       if (Math.abs(velRef.current) < 0.5) {
         velRef.current = 0
-        snapToNearest(lastDirRef.current)
+        snapToNearest()
         return
       }
-      lastDirRef.current = velRef.current > 0 ? 1 : -1
       posRef.current += velRef.current
       applyPos()
       rafRef.current = requestAnimationFrame(momentum)
@@ -132,7 +128,6 @@ function App() {
       const dt = Math.max(now - lastTouchTimeRef.current, 1)
       const dy = lastTouchYRef.current - y
       velRef.current = (dy / dt) * 16
-      if (dy !== 0) lastDirRef.current = dy > 0 ? 1 : -1
       posRef.current += dy
       lastTouchYRef.current = y
       lastTouchTimeRef.current = now
@@ -149,10 +144,9 @@ function App() {
       cancelAnimationFrame(rafRef.current)
       clearTimeout(wheelTimer)
       const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY
-      if (delta !== 0) lastDirRef.current = delta > 0 ? 1 : -1
       posRef.current += delta
       applyPos()
-      wheelTimer = setTimeout(() => snapToNearest(lastDirRef.current), 80)
+      wheelTimer = setTimeout(snapToNearest, 80)
     }
 
     container.addEventListener('touchstart', onTouchStart, { passive: true })
