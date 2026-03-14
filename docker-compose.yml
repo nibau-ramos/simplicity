@@ -1,8 +1,23 @@
 services:
+  builder:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - dist:/app/dist
+    command: sh -c "npm install && npm run build"
+
   app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
+    image: nginx:alpine
     ports:
       - "8080:80"
+    volumes:
+      - dist:/usr/share/nginx/html:ro
+      - ./docker-images/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      builder:
+        condition: service_completed_successfully
     restart: unless-stopped
+
+volumes:
+  dist:
