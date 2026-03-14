@@ -37,11 +37,19 @@ function App() {
   const lastTouchTimeRef = useRef(0)
   const rafRef = useRef(null)
   const singleHeightRef = useRef(0)
+  const itemHRef = useRef(0)
+  const item0CenterRef = useRef(0)
+  const lastDirRef = useRef(1)
 
   useEffect(() => {
     const container = containerRef.current
     const content = contentRef.current
     singleHeightRef.current = content.scrollHeight / 2
+
+    // measure item dimensions from DOM — unaffected by CSS transform
+    const items = content.querySelectorAll('p')
+    itemHRef.current = items[1].offsetTop - items[0].offsetTop
+    item0CenterRef.current = items[0].offsetTop + items[0].offsetHeight / 2
 
     const applyPos = () => {
       const H = singleHeightRef.current
@@ -63,19 +71,26 @@ function App() {
       }
     }
 
-    const snapToNearest = () => {
+    const snapToNearest = (dir) => {
       const H = singleHeightRef.current
-      const itemH = H / sentences.length
-      const paddingTop = parseFloat(getComputedStyle(content).paddingTop)
+      const itemH = itemHRef.current
+      const item0Center = item0CenterRef.current
       const viewportH = container.clientHeight
-      // offset so that item center aligns with viewport center
-      const baseOffset = paddingTop + itemH / 2 - viewportH / 2
-      const n = Math.round((posRef.current - baseOffset) / itemH)
-      let target = ((( baseOffset + n * itemH) % H) + H) % H
+
+      // content position currently at viewport center
+      const contentCenterPos = posRef.current + viewportH / 2
+      const phase = (contentCenterPos - item0Center) / itemH
+
+      // snap in scroll direction: ceil when going down, floor when going up
+      const n = dir > 0
+        ? Math.ceil(phase - 1e-6)
+        : Math.floor(phase + 1e-6)
+
+      const targetContentPos = item0Center + n * itemH
+      let target = (((targetContentPos - viewportH / 2) % H) + H) % H
 
       const animateSnap = () => {
         let diff = target - posRef.current
-        // take shortest path across the wrap boundary
         if (diff >  H / 2) diff -= H
         if (diff < -H / 2) diff += H
         if (Math.abs(diff) < 0.3) {
@@ -83,7 +98,7 @@ function App() {
           applyPos()
           return
         }
-        posRef.current += diff * 0.18
+        posRef.current += diff * 0.2
         applyPos()
         rafRef.current = requestAnimationFrame(animateSnap)
       }
@@ -94,9 +109,10 @@ function App() {
       velRef.current *= 0.97
       if (Math.abs(velRef.current) < 0.5) {
         velRef.current = 0
-        snapToNearest()
+        snapToNearest(lastDirRef.current)
         return
       }
+      lastDirRef.current = velRef.current > 0 ? 1 : -1
       posRef.current += velRef.current
       applyPos()
       rafRef.current = requestAnimationFrame(momentum)
@@ -116,6 +132,7 @@ function App() {
       const dt = Math.max(now - lastTouchTimeRef.current, 1)
       const dy = lastTouchYRef.current - y
       velRef.current = (dy / dt) * 16
+      if (dy !== 0) lastDirRef.current = dy > 0 ? 1 : -1
       posRef.current += dy
       lastTouchYRef.current = y
       lastTouchTimeRef.current = now
@@ -132,9 +149,10 @@ function App() {
       cancelAnimationFrame(rafRef.current)
       clearTimeout(wheelTimer)
       const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY
+      if (delta !== 0) lastDirRef.current = delta > 0 ? 1 : -1
       posRef.current += delta
       applyPos()
-      wheelTimer = setTimeout(snapToNearest, 80)
+      wheelTimer = setTimeout(() => snapToNearest(lastDirRef.current), 80)
     }
 
     container.addEventListener('touchstart', onTouchStart, { passive: true })
