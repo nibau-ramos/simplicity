@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 const sentences = Array.from({ length: 50 }, (_, i) => `Hello World ${String(i + 1).padStart(2, '0')}`)
 const doubled = [...sentences, ...sentences]
 
-function playTick(audioCtx) {
+function playTick(audioCtx, gainValue) {
+  if (gainValue === 0) return
   const osc = audioCtx.createOscillator()
   const gain = audioCtx.createGain()
   osc.connect(gain)
@@ -11,7 +12,7 @@ function playTick(audioCtx) {
   osc.type = 'sine'
   osc.frequency.setValueAtTime(1400, audioCtx.currentTime)
   osc.frequency.exponentialRampToValueAtTime(700, audioCtx.currentTime + 0.025)
-  gain.gain.setValueAtTime(0.12, audioCtx.currentTime)
+  gain.gain.setValueAtTime(gainValue, audioCtx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04)
   osc.start(audioCtx.currentTime)
   osc.stop(audioCtx.currentTime + 0.04)
@@ -25,6 +26,10 @@ function App() {
   const lastTickTimeRef = useRef(0)
   const [audioReady, setAudioReady] = useState(false)
   const [dark, setDark] = useState(false)
+  const volumeStates = ['off', 'low', 'medium', 'normal']
+  const volumeGains  = { off: 0, low: 0.04, medium: 0.08, normal: 0.12 }
+  const [volumeIdx, setVolumeIdx] = useState(3)
+  const volumeIdxRef = useRef(3)
 
   const posRef = useRef(0)
   const velRef = useRef(0)
@@ -51,7 +56,9 @@ function App() {
         const now = performance.now()
         if (audioCtxRef.current && now - lastTickTimeRef.current >= 30) {
           lastTickTimeRef.current = now
-          playTick(audioCtxRef.current)
+          const gains = { off: 0, low: 0.04, medium: 0.08, normal: 0.12 }
+          const states = ['off', 'low', 'medium', 'normal']
+          playTick(audioCtxRef.current, gains[states[volumeIdxRef.current]])
         }
       }
     }
@@ -162,20 +169,35 @@ function App() {
           ))}
         </div>
       </div>
-      <button
-        onClick={() => setDark(d => !d)}
-        style={{
-          position: 'absolute', bottom: '1.5rem', right: '1.5rem', zIndex: 20,
-          border: `2px solid ${fg}`,
-          background: bg, color: fg,
-          fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.05em',
-          padding: '0.4rem 0.8rem', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'background 0.3s, color 0.3s, border-color 0.3s',
-        }}
-      >
-        {dark ? 'light' : 'dark'}
-      </button>
+      {/* controls overlay — pointerEvents none so scroll still works everywhere except the buttons */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 20,
+        pointerEvents: 'none',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
+        padding: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem)) max(1.5rem, env(safe-area-inset-right, 1.5rem))',
+        gap: '0.5rem',
+        fontFamily: "'Courier New', Courier, monospace",
+      }}>
+        {[
+          { label: dark ? 'light' : 'dark', onClick: () => setDark(d => !d) },
+          { label: volumeStates[volumeIdx], onClick: () => {
+            const next = (volumeIdx + 1) % volumeStates.length
+            setVolumeIdx(next)
+            volumeIdxRef.current = next
+          }},
+        ].map(({ label, onClick }) => (
+          <button key={label} onClick={onClick} style={{
+            pointerEvents: 'auto',
+            border: `2px solid ${fg}`,
+            background: bg, color: fg,
+            fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.05em',
+            padding: '0.4rem 0.8rem', cursor: 'pointer',
+            transition: 'background 0.3s, color 0.3s, border-color 0.3s',
+          }}>
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
