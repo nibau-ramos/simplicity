@@ -59,10 +59,6 @@ function App() {
     setIndicatorH(iH)
     setCloneTopOffset(-(viewportH / 2 - iH / 2))
 
-    // centre item 0 in the indicator on load
-    posRef.current = (((item0CenterRef.current - viewportH / 2) % singleHeightRef.current) + singleHeightRef.current) % singleHeightRef.current
-    applyPos()
-
     const applyPos = () => {
       const H = singleHeightRef.current
       posRef.current = ((posRef.current % H) + H) % H
@@ -83,6 +79,10 @@ function App() {
         }
       }
     }
+
+    // centre item 0 in the indicator on load
+    posRef.current = (((item0CenterRef.current - viewportH / 2) % singleHeightRef.current) + singleHeightRef.current) % singleHeightRef.current
+    applyPos()
 
     const FRICTION = 0.97
 
