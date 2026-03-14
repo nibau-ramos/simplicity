@@ -48,7 +48,7 @@ function App() {
       if (currentItem !== lastItemRef.current) {
         lastItemRef.current = currentItem
         const now = performance.now()
-        if (audioCtxRef.current && now - lastTickTimeRef.current >= 50) {
+        if (audioCtxRef.current && now - lastTickTimeRef.current >= 30) {
           lastTickTimeRef.current = now
           playTick(audioCtxRef.current)
         }
