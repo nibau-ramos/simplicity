@@ -28,8 +28,8 @@ function App() {
   const [dark, setDark] = useState(false)
   const volumeStates = ['off', 'low', 'medium', 'normal']
   const volumeGains  = { off: 0, low: 0.04, medium: 0.08, normal: 0.12 }
-  const [volumeIdx, setVolumeIdx] = useState(3)
-  const volumeIdxRef = useRef(3)
+  const [volumeIdx, setVolumeIdx] = useState(1)
+  const volumeIdxRef = useRef(1)
 
   const posRef = useRef(0)
   const velRef = useRef(0)
