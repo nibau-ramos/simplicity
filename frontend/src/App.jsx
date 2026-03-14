@@ -63,9 +63,40 @@ function App() {
       }
     }
 
+    const snapToNearest = () => {
+      const H = singleHeightRef.current
+      const itemH = H / sentences.length
+      const paddingTop = parseFloat(getComputedStyle(content).paddingTop)
+      const viewportH = container.clientHeight
+      // offset so that item center aligns with viewport center
+      const baseOffset = paddingTop + itemH / 2 - viewportH / 2
+      const n = Math.round((posRef.current - baseOffset) / itemH)
+      let target = ((( baseOffset + n * itemH) % H) + H) % H
+
+      const animateSnap = () => {
+        let diff = target - posRef.current
+        // take shortest path across the wrap boundary
+        if (diff >  H / 2) diff -= H
+        if (diff < -H / 2) diff += H
+        if (Math.abs(diff) < 0.3) {
+          posRef.current = target
+          applyPos()
+          return
+        }
+        posRef.current += diff * 0.18
+        applyPos()
+        rafRef.current = requestAnimationFrame(animateSnap)
+      }
+      rafRef.current = requestAnimationFrame(animateSnap)
+    }
+
     const momentum = () => {
       velRef.current *= 0.97
-      if (Math.abs(velRef.current) < 0.1) { velRef.current = 0; return }
+      if (Math.abs(velRef.current) < 0.5) {
+        velRef.current = 0
+        snapToNearest()
+        return
+      }
       posRef.current += velRef.current
       applyPos()
       rafRef.current = requestAnimationFrame(momentum)
@@ -95,12 +126,15 @@ function App() {
       rafRef.current = requestAnimationFrame(momentum)
     }
 
+    let wheelTimer = null
     const onWheel = (e) => {
       e.preventDefault()
       cancelAnimationFrame(rafRef.current)
+      clearTimeout(wheelTimer)
       const delta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY
       posRef.current += delta
       applyPos()
+      wheelTimer = setTimeout(snapToNearest, 80)
     }
 
     container.addEventListener('touchstart', onTouchStart, { passive: true })
