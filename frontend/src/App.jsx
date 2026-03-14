@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const sentences = Array.from({ length: 50 }, (_, i) => `Hello World ${String(i + 1).padStart(2, '0')}`)
 const tripled = [...sentences, ...sentences, ...sentences]
@@ -26,6 +26,7 @@ function App() {
   const audioCtxRef = useRef(null)
   const lastItemRef = useRef(-1)
   const lastTickTimeRef = useRef(0)
+  const [audioReady, setAudioReady] = useState(false)
 
   useEffect(() => {
     const el = containerRef.current
@@ -55,24 +56,35 @@ function App() {
       }
     }
 
-    // init AudioContext on first user interaction
-    const initAudio = () => {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new AudioContext()
-      }
-    }
-
     el.addEventListener('scroll', handleScroll)
-    el.addEventListener('pointerdown', initAudio, { once: false })
-    window.addEventListener('keydown', initAudio, { once: true })
-
-    return () => {
-      el.removeEventListener('scroll', handleScroll)
-      el.removeEventListener('pointerdown', initAudio)
-    }
+    return () => el.removeEventListener('scroll', handleScroll)
   }, [])
 
+  const unlockAudio = async () => {
+    const ctx = new AudioContext()
+    await ctx.resume()
+    audioCtxRef.current = ctx
+    setAudioReady(true)
+  }
+
   return (
+    <div style={{ position: 'relative', height: '100vh' }}>
+      {!audioReady && (
+        <div
+          onClick={unlockAudio}
+          style={{
+            position: 'absolute', inset: 0, zIndex: 10,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(6px)',
+            cursor: 'pointer', fontFamily: "'Courier New', Courier, monospace",
+          }}
+        >
+          <span style={{ fontSize: '3rem' }}>🔊</span>
+          <p style={{ fontSize: '1.1rem', fontWeight: '700', marginTop: '1rem', letterSpacing: '0.05em' }}>
+            tap to enable sound
+          </p>
+        </div>
+      )}
     <div
       ref={containerRef}
       style={{ height: '100vh', overflowY: 'scroll', fontFamily: "'Courier New', Courier, monospace", padding: '3rem 1rem' }}
@@ -90,6 +102,7 @@ function App() {
           {s}
         </p>
       ))}
+    </div>
     </div>
   )
 }
